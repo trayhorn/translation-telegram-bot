@@ -15,6 +15,8 @@ export default {
 
 			const target_lang = await env.LANG_STORAGE.get(chatId.toString()) || "UK";
 
+			// Handling callbacks
+
 			if (callbackId) {
 				if (!chatId) {
 					return new Response("No chatId for callback", { status: 400 });
@@ -115,6 +117,33 @@ export default {
 				return new Response("OK");
 			}
 
+			// Displaying disctionary
+
+			if (message === "/dictionary") {
+				const stored = await env.DICTIONARY_STORAGE.get(chatId.toString());
+				const dictionary = stored ? JSON.parse(stored) : [];
+
+				const text = dictionary.length > 0
+					? `Your saved translations:\n${dictionary.join("\n")}`
+					: "No saved translations found.";
+
+				await fetch(
+					`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							chat_id: chatId,
+							text,
+						}),
+					}
+				);
+
+				return new Response("OK");
+			}
+
+			// Translating
+
 			const translated = await fetch(
 				"https://api-free.deepl.com/v2/translate",
 				{
@@ -137,7 +166,7 @@ export default {
 
 			await env.TEMP_STORAGE.put(
 				chatId.toString(),
-				message + '-' + translated.translations[0].text
+				message + ' - ' + translated.translations[0].text
 			);
 
 			await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
